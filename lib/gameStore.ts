@@ -15,14 +15,36 @@ import { advisorForCategory, ADVISORS } from "./advisors";
 import type { PowerId } from "./powers";
 
 const START_GAUGES: Gauges = {
-  peuple: 55,
-  tresor: 55,
-  armee: 55,
+  peuple: 60,
+  tresor: 60,
+  armee: 60,
   pouvoir: 60,
 };
 
-const DECISIONS_PER_YEAR = 4;
-const TOTAL_DECISIONS = DECISIONS_PER_YEAR * 7;
+// v2.0 : 18 decisions totales repartis 3-3-3-3-2-2-2 sur 7 annees
+const DECISIONS_PER_YEAR_SEQ = [3, 3, 3, 3, 2, 2, 2] as const;
+const TOTAL_DECISIONS = DECISIONS_PER_YEAR_SEQ.reduce((a, b) => a + b, 0);
+
+function yearFromDecisions(n: number): number {
+  let acc = 0;
+  for (let y = 0; y < DECISIONS_PER_YEAR_SEQ.length; y++) {
+    acc += DECISIONS_PER_YEAR_SEQ[y];
+    if (n < acc) return y + 1;
+  }
+  return 7;
+}
+
+function decisionsInYear(
+  total: number,
+  year: number
+): { current: number; perYear: number } {
+  let before = 0;
+  for (let y = 0; y < year - 1; y++) before += DECISIONS_PER_YEAR_SEQ[y];
+  return {
+    current: total - before,
+    perYear: DECISIONS_PER_YEAR_SEQ[year - 1],
+  };
+}
 const BASE_COOLDOWN = 3;
 const START_LOYALTY = 60;
 
@@ -92,18 +114,25 @@ function eligible(
   year: number,
   tags: string[],
   seen: number[],
-  activeChain: string | null
+  activeChain: string | null,
+  gauges: Gauges
 ): boolean {
   if (seen.includes(ev.id)) return false;
-  if (ev.year !== undefined && ev.year !== year) return false;
-  if (ev.minYear !== undefined && year < ev.minYear) return false;
-  if (ev.maxYear !== undefined && year > ev.maxYear) return false;
+  // Filet de securite : si minGauge ou maxGauge, on autorise a toutes les annees
+  const isSafetyNet = !!(ev.minGauge || ev.maxGauge);
+  if (!isSafetyNet) {
+    if (ev.year !== undefined && ev.year !== year) return false;
+    if (ev.minYear !== undefined && year < ev.minYear) return false;
+    if (ev.maxYear !== undefined && year > ev.maxYear) return false;
+  }
   if (ev.requireTags?.length) {
     if (!ev.requireTags.every((t) => tags.includes(t))) return false;
   }
   if (ev.forbidTags?.length) {
     if (ev.forbidTags.some((t) => tags.includes(t))) return false;
   }
+  if (ev.minGauge && gauges[ev.minGauge.key] < ev.minGauge.value) return false;
+  if (ev.maxGauge && gauges[ev.maxGauge.key] > ev.maxGauge.value) return false;
   if (ev.chainId) {
     if (activeChain && ev.chainId === activeChain) return true;
     if (!ev.requireTags?.length) return false;
@@ -222,20 +251,40 @@ export const useGame = create<GameState>((set, get) => ({
       ? createRng(hashSeed(dailySeed + ":" + state.decisionsCount))
       : Math.random;
 
+    const gaugesNow = state.gauges;
     const chainEvents = activeChain
       ? EVENTS.filter(
           (e) =>
             e.chainId === activeChain &&
-            eligible(e, year, tags, seenEventIds, activeChain)
+            eligible(e, year, tags, seenEventIds, activeChain, gaugesNow)
         )
       : [];
+
+    // Prioriser filets de securite si une jauge est critique
+    const critical = (Object.keys(gaugesNow) as (keyof Gauges)[]).find(
+      (k) => gaugesNow[k] <= 15
+    );
+    if (chainEvents.length === 0 && critical) {
+      const safety = EVENTS.filter(
+        (e) =>
+          e.maxGauge?.key === critical &&
+          !seenEventIds.includes(e.id) &&
+          eligible(e, year, tags, seenEventIds, null, gaugesNow)
+      );
+      if (safety.length > 0) {
+        const weights = safety.map((e) => RARITY_WEIGHT[e.rarity]);
+        const picked = weightedPick(safety, weights, rng);
+        set({ currentEventId: picked.id, activeChain: null, advisorSaid: null });
+        return;
+      }
+    }
 
     let candidates: GameEvent[] = [];
     if (chainEvents.length > 0) {
       candidates = chainEvents;
     } else {
       candidates = EVENTS.filter((e) =>
-        eligible(e, year, tags, seenEventIds, null)
+        eligible(e, year, tags, seenEventIds, null, gaugesNow)
       );
     }
 
@@ -310,15 +359,13 @@ export const useGame = create<GameState>((set, get) => ({
     } else if (id === "referendum") {
       const last = state.history[state.history.length - 1];
       if (!last) return;
+      const prevDecisions = Math.max(0, state.decisionsCount - 1);
       set({
         gauges: last.gaugesBefore,
         history: state.history.slice(0, -1),
         seenEventIds: state.seenEventIds.filter((i) => i !== last.eventId),
-        decisionsCount: Math.max(0, state.decisionsCount - 1),
-        year: Math.max(
-          1,
-          Math.min(7, Math.ceil((state.decisionsCount - 1) / DECISIONS_PER_YEAR))
-        ),
+        decisionsCount: prevDecisions,
+        year: Math.max(1, yearFromDecisions(prevDecisions + 1)),
         currentEventId: last.eventId,
         powersUsed: [...state.powersUsed, id],
       });
@@ -377,10 +424,7 @@ export const useGame = create<GameState>((set, get) => ({
     const newHistory = [...state.history, playedEvent];
     const newSeen = [...state.seenEventIds, ev.id];
     const newDecisions = state.decisionsCount + 1;
-    const newYear = Math.min(
-      7,
-      Math.ceil(newDecisions / DECISIONS_PER_YEAR)
-    );
+    const newYear = yearFromDecisions(newDecisions);
     const activeChain = c.nextChain ?? null;
 
     // Mise à jour loyautés : conseiller dont avis suivi = +4, ignoré = -2

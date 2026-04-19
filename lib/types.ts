@@ -21,6 +21,11 @@ export interface HiddenChoice extends Choice {
   unlockTrait?: string;
 }
 
+export interface GaugeCondition {
+  key: GaugeKey;
+  value: number;
+}
+
 export interface GameEvent {
   id: number;
   title: string;
@@ -34,6 +39,8 @@ export interface GameEvent {
   requireTags?: string[];
   forbidTags?: string[];
   chainId?: string | null;
+  minGauge?: GaugeCondition;
+  maxGauge?: GaugeCondition;
   a: Choice;
   b: Choice;
   c?: HiddenChoice;

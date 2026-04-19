@@ -18,9 +18,14 @@ export function PlayScreen() {
   const playerName = useGame((s) => s.playerName);
   const currentEvent = getCurrentEvent();
 
-  const totalDecisionsInYear = 4;
-  const decInYear = decisionsCount % totalDecisionsInYear;
-  const yearProgress = (decInYear / totalDecisionsInYear) * 100;
+  const DECISIONS_PER_YEAR_SEQ = [3, 3, 3, 3, 2, 2, 2];
+  const before = DECISIONS_PER_YEAR_SEQ.slice(0, year - 1).reduce(
+    (a, b) => a + b,
+    0
+  );
+  const perYear = DECISIONS_PER_YEAR_SEQ[year - 1] ?? 3;
+  const decInYear = Math.max(0, decisionsCount - before);
+  const yearProgress = (decInYear / perYear) * 100;
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
