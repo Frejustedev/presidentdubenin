@@ -15,6 +15,12 @@ export interface Choice {
   nextChain?: string | null;
 }
 
+export interface HiddenChoice extends Choice {
+  unlockTags?: string[];
+  unlockLoyalty?: { advisor: "peuple" | "tresor" | "armee" | "pouvoir"; min: number };
+  unlockTrait?: string;
+}
+
 export interface GameEvent {
   id: number;
   title: string;
@@ -30,6 +36,7 @@ export interface GameEvent {
   chainId?: string | null;
   a: Choice;
   b: Choice;
+  c?: HiddenChoice;
 }
 
 export type EndingType =
@@ -53,7 +60,7 @@ export interface Ending {
 
 export interface PlayedEvent {
   eventId: number;
-  choice: "a" | "b";
+  choice: "a" | "b" | "c";
   year: number;
   gaugesBefore: Gauges;
   gaugesAfter: Gauges;
@@ -71,4 +78,15 @@ export interface GameResult {
   playedAt: number;
   keyMoments: PlayedEvent[];
   tags: string[];
+  isDailyChallenge?: boolean;
+  dailySeed?: string;
+  activeTraits?: string[];
 }
+
+export type TraitId =
+  | "charisme"
+  | "rigueur"
+  | "strategie"
+  | "animal_politique"
+  | "vieux_routier"
+  | "visionnaire";

@@ -40,7 +40,7 @@ export function IntroScreen() {
   const last = i === SLIDES.length - 1;
 
   const next = () => {
-    if (last) setScreen("register");
+    if (last) setScreen("traits");
     else setI(i + 1);
   };
 
@@ -90,7 +90,7 @@ export function IntroScreen() {
 
         {!last && (
           <button
-            onClick={() => setScreen("register")}
+            onClick={() => setScreen("traits")}
             className="btn-ghost mt-3 text-sm"
           >
             Passer →

@@ -6,12 +6,13 @@ import {
   useTransform,
   type PanInfo,
 } from "framer-motion";
-import { useState } from "react";
-import type { GameEvent } from "@/lib/types";
+import { useState, useMemo } from "react";
+import type { GameEvent, TraitId } from "@/lib/types";
+import { useGame } from "@/lib/gameStore";
 
 interface Props {
   event: GameEvent;
-  onChoice: (choice: "a" | "b") => void;
+  onChoice: (choice: "a" | "b" | "c") => void;
 }
 
 const CAT_COLOR: Record<GameEvent["cat"], string> = {
@@ -27,6 +28,25 @@ export function EventCard({ event, onChoice }: Props) {
   const opacityA = useTransform(x, [-140, -30, 0], [1, 0.45, 0]);
   const opacityB = useTransform(x, [0, 30, 140], [0, 0.45, 1]);
   const [exiting, setExiting] = useState(false);
+
+  const activeTraits = useGame((s) => s.activeTraits);
+  const loyalties = useGame((s) => s.loyalties);
+  const tags = useGame((s) => s.tags);
+  const revealNext = useGame((s) => s.revealNext);
+
+  const hiddenUnlocked = useMemo(() => {
+    if (!event.c) return false;
+    const c = event.c;
+    if (c.unlockTrait && activeTraits.includes(c.unlockTrait as TraitId))
+      return true;
+    if (
+      c.unlockLoyalty &&
+      loyalties[c.unlockLoyalty.advisor] >= c.unlockLoyalty.min
+    )
+      return true;
+    if (c.unlockTags && c.unlockTags.every((t) => tags.includes(t))) return true;
+    return false;
+  }, [event.c, activeTraits, loyalties, tags]);
 
   const onDragEnd = (
     _: MouseEvent | TouchEvent | PointerEvent,
@@ -45,6 +65,30 @@ export function EventCard({ event, onChoice }: Props) {
   };
 
   const catColor = CAT_COLOR[event.cat];
+
+  const fxBadge = (fx: typeof event.a.fx) => {
+    if (!revealNext) return null;
+    const bits: string[] = [];
+    (["peuple", "tresor", "armee", "pouvoir"] as const).forEach((k) => {
+      const v = fx[k];
+      if (v === undefined || v === 0) return;
+      const sign = v > 0 ? "+" : "";
+      const emoji =
+        k === "peuple"
+          ? "👥"
+          : k === "tresor"
+          ? "💰"
+          : k === "armee"
+          ? "🛡️"
+          : "🏛️";
+      bits.push(`${emoji}${sign}${v}`);
+    });
+    return (
+      <div className="text-[10px] text-gold font-mono mt-1">
+        {bits.join(" ")}
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -67,7 +111,6 @@ export function EventCard({ event, onChoice }: Props) {
       transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
       className="relative panel p-6 w-full select-none touch-pan-y cursor-grab active:cursor-grabbing"
     >
-      {/* Catégorie */}
       <div className="flex items-center justify-between mb-4">
         <span
           className="chip"
@@ -90,7 +133,6 @@ export function EventCard({ event, onChoice }: Props) {
         )}
       </div>
 
-      {/* Emoji + titre */}
       <div className="text-center">
         <div className="text-6xl mb-3" aria-hidden>
           {event.icon}
@@ -98,12 +140,11 @@ export function EventCard({ event, onChoice }: Props) {
         <h2 className="font-display font-bold text-xl md:text-2xl text-ink mb-2 leading-tight">
           {event.title}
         </h2>
-        <p className="text-sm text-ink-dim leading-relaxed min-h-[4rem]">
+        <p className="text-sm text-ink-dim leading-relaxed min-h-[3.5rem]">
           {event.desc}
         </p>
       </div>
 
-      {/* Indicateurs latéraux */}
       <motion.div
         style={{ opacity: opacityA }}
         className="absolute inset-y-0 left-0 w-16 rounded-l-card bg-gradient-to-r from-white/10 to-transparent pointer-events-none grid place-items-center"
@@ -117,8 +158,7 @@ export function EventCard({ event, onChoice }: Props) {
         <span className="text-2xl">👉</span>
       </motion.div>
 
-      {/* Choix */}
-      <div className="mt-6 grid grid-cols-2 gap-3">
+      <div className="mt-5 grid grid-cols-2 gap-2">
         <button
           onClick={() => {
             if (!exiting) {
@@ -126,7 +166,7 @@ export function EventCard({ event, onChoice }: Props) {
               onChoice("a");
             }
           }}
-          className="group text-left bg-bg-elevated border border-white/10 rounded-2xl p-3
+          className="text-left bg-bg-elevated border border-white/10 rounded-2xl p-3
                      hover:border-gold/40 transition active:scale-[0.98]"
         >
           <div className="text-[10px] uppercase tracking-widest text-ink-dim">
@@ -135,6 +175,7 @@ export function EventCard({ event, onChoice }: Props) {
           <div className="text-sm font-medium text-ink mt-1">
             {event.a.label}
           </div>
+          {fxBadge(event.a.fx)}
         </button>
         <button
           onClick={() => {
@@ -143,7 +184,7 @@ export function EventCard({ event, onChoice }: Props) {
               onChoice("b");
             }
           }}
-          className="group text-right bg-bg-elevated border border-white/10 rounded-2xl p-3
+          className="text-right bg-bg-elevated border border-white/10 rounded-2xl p-3
                      hover:border-gold/40 transition active:scale-[0.98]"
         >
           <div className="text-[10px] uppercase tracking-widest text-ink-dim">
@@ -152,12 +193,37 @@ export function EventCard({ event, onChoice }: Props) {
           <div className="text-sm font-medium text-ink mt-1">
             {event.b.label}
           </div>
+          {fxBadge(event.b.fx)}
         </button>
       </div>
 
-      <div className="mt-3 text-[10px] text-center text-ink-faint">
-        Glisser la carte ou cliquer un choix
-      </div>
+      {event.c && hiddenUnlocked && (
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => {
+            if (!exiting) {
+              setExiting(true);
+              onChoice("c");
+            }
+          }}
+          className="mt-2 w-full text-center rounded-2xl p-3 border-2 transition active:scale-[0.98]"
+          style={{
+            borderColor: "#F39C12",
+            background:
+              "linear-gradient(180deg, rgba(243,156,18,0.15), rgba(243,156,18,0.05))",
+            boxShadow: "0 0 30px rgba(243,156,18,0.25)",
+          }}
+        >
+          <div className="text-[10px] uppercase tracking-widest text-gold">
+            ✨ Option cachée
+          </div>
+          <div className="text-sm font-bold text-gold mt-1">
+            {event.c.label}
+          </div>
+          {fxBadge(event.c.fx)}
+        </motion.button>
+      )}
     </motion.div>
   );
 }

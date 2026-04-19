@@ -285,6 +285,12 @@ export const EVENTS: GameEvent[] = [
       fx: { tresor: 8, peuple: 3, armee: -4, pouvoir: -2 },
       tags: ["alliance_cedeao"],
     },
+    c: {
+      label: "Proposer un 3e bloc ouest-africain",
+      fx: { pouvoir: 14, peuple: 8, tresor: -6, armee: 3 },
+      tags: ["troisieme_voie", "legende"],
+      unlockTrait: "visionnaire",
+    },
   },
   {
     id: 31,
@@ -473,6 +479,12 @@ export const EVENTS: GameEvent[] = [
       label: "Déploiement de police anti-émeute",
       fx: { peuple: -10, armee: 5, pouvoir: -2 },
       tags: ["repression"],
+    },
+    c: {
+      label: "Marcher avec les jeunes en personne",
+      fx: { peuple: 16, pouvoir: 6, armee: -6 },
+      tags: ["president_du_peuple"],
+      unlockLoyalty: { advisor: "peuple", min: 75 },
     },
   },
 
@@ -705,6 +717,12 @@ export const EVENTS: GameEvent[] = [
       label: "Refuser catégoriquement",
       fx: { peuple: 20, pouvoir: -8, armee: 4, tresor: 4 },
       tags: ["democratie", "legende"],
+    },
+    c: {
+      label: "Référendum limitant le mandat présidentiel à un seul",
+      fx: { peuple: 22, pouvoir: -2, armee: 6, tresor: 4 },
+      tags: ["democratie", "legende", "constitution_propre"],
+      unlockLoyalty: { advisor: "pouvoir", min: 80 },
     },
   },
   {

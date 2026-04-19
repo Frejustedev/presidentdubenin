@@ -8,6 +8,7 @@ import { RegisterScreen } from "@/components/screens/Register";
 import { PlayScreen } from "@/components/screens/Play";
 import { EndScreen } from "@/components/screens/End";
 import { LeaderboardScreen } from "@/components/screens/Leaderboard";
+import { TraitsScreen } from "@/components/screens/Traits";
 
 const SCREENS = {
   title: TitleScreen,
@@ -16,6 +17,7 @@ const SCREENS = {
   play: PlayScreen,
   end: EndScreen,
   leaderboard: LeaderboardScreen,
+  traits: TraitsScreen,
 } as const;
 
 export default function Home() {

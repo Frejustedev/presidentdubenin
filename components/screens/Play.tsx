@@ -5,6 +5,9 @@ import { useGame } from "@/lib/gameStore";
 import { Gauges } from "@/components/Gauges";
 import { EventCard } from "@/components/EventCard";
 import { FlagBar } from "@/components/FlagBar";
+import { AdvisorBar } from "@/components/AdvisorBar";
+import { AdvisorPanel } from "@/components/AdvisorPanel";
+import { PowersBar } from "@/components/PowersBar";
 
 export function PlayScreen() {
   const gauges = useGame((s) => s.gauges);
@@ -23,8 +26,7 @@ export function PlayScreen() {
     <div className="min-h-[100dvh] flex flex-col">
       <FlagBar />
 
-      {/* Header */}
-      <div className="px-5 pt-4 pb-3">
+      <div className="px-5 pt-4 pb-2">
         <div className="flex items-center justify-between mb-2">
           <div className="flex flex-col">
             <span className="text-[10px] tracking-widest text-ink-faint uppercase">
@@ -53,13 +55,12 @@ export function PlayScreen() {
           />
         </div>
 
-        <div className="mt-5">
-          <Gauges values={gauges} size={62} />
+        <div className="mt-4">
+          <Gauges values={gauges} size={58} />
         </div>
       </div>
 
-      {/* Card area */}
-      <div className="flex-1 flex items-center justify-center px-5 py-4">
+      <div className="flex-1 flex items-center justify-center px-5 py-2">
         <div className="w-full max-w-md">
           <AnimatePresence mode="wait">
             {currentEvent && (
@@ -73,13 +74,28 @@ export function PlayScreen() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-5 pb-5 flex items-center justify-between text-[10px] text-ink-faint">
+      <div className="px-4 pb-2">
+        <div className="text-[9px] uppercase tracking-widest text-ink-faint mb-1 text-center">
+          Conseillers
+        </div>
+        <AdvisorBar />
+      </div>
+
+      <div className="px-4 pb-2">
+        <div className="text-[9px] uppercase tracking-widest text-ink-faint mb-1 text-center">
+          Pouvoirs exceptionnels
+        </div>
+        <PowersBar />
+      </div>
+
+      <div className="px-5 pb-3 pt-1 flex items-center justify-between text-[10px] text-ink-faint">
         <span className="tracking-widest uppercase">
           Décision {decisionsCount + 1}
         </span>
         <span className="font-mono">🇧🇯 {2025 + year}</span>
       </div>
+
+      <AdvisorPanel />
     </div>
   );
 }
