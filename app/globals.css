@@ -28,6 +28,15 @@ body {
     #0b1018;
   min-height: 100vh;
   min-height: 100dvh;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Prevent iOS double-tap zoom on interactive elements */
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
 }
 
 @layer components {

@@ -3,6 +3,9 @@ import { ENDINGS } from "./endings";
 
 export function shareText(result: GameResult): string {
   const ending = ENDINGS[result.ending];
+  const dailyTag = result.isDailyChallenge && result.dailySeed
+    ? `\n📅 Défi du ${result.dailySeed.split("-").reverse().join("/")}`
+    : "";
   const lines: Record<string, string> = {
     LÉGENDE: `J'ai gouverné le Bénin pendant 7 ans et je suis devenu(e) une légende. Score : ${result.score}/100.`,
     TRANSITION: `J'ai quitté le pouvoir dans les règles après 7 ans. Passation propre. Score : ${result.score}/100.`,
@@ -18,7 +21,7 @@ export function shareText(result: GameResult): string {
   return `${lines[ending.type]}
 
 🇧🇯 ${ending.emoji} ${ending.type} · Score ${result.score}/100
-Année ${result.yearReached}/7 · ${result.decisionsCount} décisions
+Année ${result.yearReached}/7 · ${result.decisionsCount} décisions${dailyTag}
 
 Et toi, tu ferais mieux ?
 👉 https://le-septennat.vercel.app

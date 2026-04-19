@@ -7,9 +7,11 @@ import { useEffect, useState } from "react";
 import { initAudio, isMuted, setMuted } from "@/lib/audio";
 import {
   currentDailySeed,
+  formatCountdown,
   hasPlayedTodayDaily,
   loadStreak,
   markDailyPlayed,
+  msUntilNextDaily,
 } from "@/lib/daily";
 import { loadProfile } from "@/lib/storage";
 
@@ -20,12 +22,17 @@ export function TitleScreen() {
   const [muted, setMutedState] = useState(false);
   const [canDaily, setCanDaily] = useState(true);
   const [streak, setStreak] = useState(0);
+  const [countdown, setCountdown] = useState("");
 
   useEffect(() => {
     initAudio();
     setMutedState(isMuted());
     setCanDaily(!hasPlayedTodayDaily());
     setStreak(loadStreak().count);
+    const update = () => setCountdown(formatCountdown(msUntilNextDaily()));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
   }, []);
 
   const startDaily = () => {
@@ -99,10 +106,19 @@ export function TitleScreen() {
           <button
             onClick={startDaily}
             disabled={!canDaily}
-            className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed flex-col gap-0.5"
           >
-            📅 Défi du jour {streak > 0 && <span className="ml-1 text-gold">🔥 {streak}</span>}
-            {!canDaily && <span className="ml-2 text-xs">(déjà joué)</span>}
+            <span className="flex items-center gap-1.5">
+              📅 Défi du jour
+              {streak > 0 && (
+                <span className="text-gold">🔥 {streak}</span>
+              )}
+            </span>
+            {!canDaily && (
+              <span className="text-[10px] font-mono text-ink-dim">
+                Prochain dans {countdown}
+              </span>
+            )}
           </button>
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -151,7 +167,9 @@ export function TitleScreen() {
       </button>
 
       <div className="py-4 text-center text-[10px] text-ink-faint tracking-widest uppercase">
-        v1.0 • Simulation politique
+        <a href="/about" className="hover:text-gold transition">
+          v2.0 • À propos
+        </a>
       </div>
     </div>
   );

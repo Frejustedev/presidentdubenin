@@ -99,8 +99,41 @@ export function EndScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const resultUrl = (() => {
+    if (!savedResult) return "";
+    const usp = new URLSearchParams({
+      name: savedResult.playerName,
+      score: savedResult.score.toString(),
+      ending: savedResult.ending,
+      year: savedResult.yearReached.toString(),
+      decisions: savedResult.decisionsCount.toString(),
+      peuple: savedResult.finalGauges.peuple.toString(),
+      tresor: savedResult.finalGauges.tresor.toString(),
+      armee: savedResult.finalGauges.armee.toString(),
+      pouvoir: savedResult.finalGauges.pouvoir.toString(),
+      daily: savedResult.isDailyChallenge ? "1" : "0",
+    });
+    if (savedResult.dailySeed) usp.set("seed", savedResult.dailySeed);
+    const base =
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://le-septennat.vercel.app";
+    return `${base}/result?${usp.toString()}`;
+  })();
+
   const share = async () => {
     if (!savedResult) return;
+    const text = shareText(savedResult);
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          text,
+          url: resultUrl,
+          title: "LE SEPTENNAT",
+        });
+        return;
+      }
+    } catch {}
     try {
       const mod = await import("html-to-image");
       if (shareRef.current) {

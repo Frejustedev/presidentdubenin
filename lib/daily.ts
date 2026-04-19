@@ -55,3 +55,34 @@ function yesterdayIso(): string {
     .toString()
     .padStart(2, "0")}-${d.getUTCDate().toString().padStart(2, "0")}`;
 }
+
+export function msUntilNextDaily(): number {
+  const now = new Date();
+  const next = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0,
+      0,
+      0
+    )
+  );
+  return next.getTime() - now.getTime();
+}
+
+export function formatCountdown(ms: number): string {
+  if (ms <= 0) return "00:00:00";
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h.toString().padStart(2, "0")}:${m
+    .toString()
+    .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+export function formatDailyLabel(seed: string): string {
+  const [y, m, d] = seed.split("-");
+  return `${d}/${m}/${y}`;
+}
