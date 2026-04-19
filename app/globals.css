@@ -1,0 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Playfair Display", serif;
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", monospace;
+}
+
+html,
+body {
+  height: 100%;
+  background: #0b1018;
+  color: #e5e7eb;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at top, rgba(243, 156, 18, 0.06), transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(0, 135, 81, 0.04), transparent 60%),
+    #0b1018;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+@layer components {
+  .flag-bar {
+    @apply h-1 w-full flex;
+  }
+  .flag-bar > span {
+    @apply flex-1 block;
+  }
+
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center px-8 py-4 rounded-2xl
+           bg-gradient-to-b from-gold to-gold-dark text-bg font-bold tracking-wider
+           shadow-[0_12px_30px_-10px_rgba(243,156,18,0.6)]
+           transition-all duration-200 active:scale-[0.98]
+           hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-12px_rgba(243,156,18,0.8)];
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-xl
+           bg-bg-panel/60 border border-white/10 text-ink font-medium
+           transition-all duration-200 active:scale-[0.98]
+           hover:border-gold/40 hover:bg-bg-panel/80;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg
+           text-ink-dim transition hover:text-ink;
+  }
+
+  .panel {
+    @apply bg-bg-card/70 backdrop-blur-sm border border-white/5 rounded-card shadow-card;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full
+           bg-white/5 border border-white/10 text-xs font-medium uppercase tracking-widest;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #F39C12 0%,
+    #FFE082 50%,
+    #F39C12 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: textShimmer 3s linear infinite;
+}
+
+@keyframes textShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
