@@ -5,15 +5,35 @@ import { useGame } from "@/lib/gameStore";
 import { FlagBar } from "@/components/FlagBar";
 import { useEffect, useState } from "react";
 import { initAudio, isMuted, setMuted } from "@/lib/audio";
+import {
+  currentDailySeed,
+  hasPlayedTodayDaily,
+  loadStreak,
+  markDailyPlayed,
+} from "@/lib/daily";
+import { loadProfile } from "@/lib/storage";
 
 export function TitleScreen() {
   const setScreen = useGame((s) => s.setScreen);
+  const setPlayerName = useGame((s) => s.setPlayerName);
+  const startGame = useGame((s) => s.startGame);
   const [muted, setMutedState] = useState(false);
+  const [canDaily, setCanDaily] = useState(true);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
     initAudio();
     setMutedState(isMuted());
+    setCanDaily(!hasPlayedTodayDaily());
+    setStreak(loadStreak().count);
   }, []);
+
+  const startDaily = () => {
+    const profile = loadProfile();
+    if (profile?.name) setPlayerName(profile.name);
+    markDailyPlayed();
+    startGame({ daily: true, seed: currentDailySeed() });
+  };
 
   const toggleMute = () => {
     const next = !muted;
@@ -77,11 +97,27 @@ export function TitleScreen() {
             JOUER
           </button>
           <button
-            onClick={() => setScreen("leaderboard")}
-            className="btn-secondary"
+            onClick={startDaily}
+            disabled={!canDaily}
+            className="btn-secondary disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            🏆 Classement
+            📅 Défi du jour {streak > 0 && <span className="ml-1 text-gold">🔥 {streak}</span>}
+            {!canDaily && <span className="ml-2 text-xs">(déjà joué)</span>}
           </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setScreen("leaderboard")}
+              className="btn-secondary"
+            >
+              🏆 Classement
+            </button>
+            <button
+              onClick={() => setScreen("profile")}
+              className="btn-secondary"
+            >
+              🎖️ Profil
+            </button>
+          </div>
         </motion.div>
 
         <motion.div

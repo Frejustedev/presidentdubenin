@@ -26,7 +26,15 @@ const TOTAL_DECISIONS = DECISIONS_PER_YEAR * 7;
 const BASE_COOLDOWN = 3;
 const START_LOYALTY = 60;
 
-type Screen = "title" | "intro" | "register" | "play" | "end" | "leaderboard" | "traits";
+type Screen =
+  | "title"
+  | "intro"
+  | "register"
+  | "play"
+  | "end"
+  | "leaderboard"
+  | "traits"
+  | "profile";
 
 type Loyalties = Record<AdvisorId, number>;
 type Cooldowns = Record<AdvisorId, number>;
