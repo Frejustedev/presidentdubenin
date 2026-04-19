@@ -3,9 +3,23 @@
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/gameStore";
 import { FlagBar } from "@/components/FlagBar";
+import { useEffect, useState } from "react";
+import { initAudio, isMuted, setMuted } from "@/lib/audio";
 
 export function TitleScreen() {
   const setScreen = useGame((s) => s.setScreen);
+  const [muted, setMutedState] = useState(false);
+
+  useEffect(() => {
+    initAudio();
+    setMutedState(isMuted());
+  }, []);
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+  };
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -91,6 +105,14 @@ export function TitleScreen() {
           ))}
         </motion.div>
       </div>
+
+      <button
+        onClick={toggleMute}
+        className="absolute top-4 right-4 text-xl opacity-60 hover:opacity-100 transition"
+        title={muted ? "Activer le son" : "Couper le son"}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
 
       <div className="py-4 text-center text-[10px] text-ink-faint tracking-widest uppercase">
         v1.0 • Simulation politique

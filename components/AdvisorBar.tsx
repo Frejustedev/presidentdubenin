@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/gameStore";
 import { ADVISORS_LIST, advisorForCategory } from "@/lib/advisors";
+import { sfxAdvisor, vibrate } from "@/lib/audio";
 
 export function AdvisorBar() {
   const cooldowns = useGame((s) => s.cooldowns);
@@ -24,7 +25,12 @@ export function AdvisorBar() {
         return (
           <button
             key={a.id}
-            onClick={() => consult(a.id)}
+            onClick={() => {
+              if (cooldowns[a.id] > 0 || loyalties[a.id] <= 0) return;
+              sfxAdvisor();
+              vibrate(30);
+              consult(a.id);
+            }}
             disabled={cd > 0 || loy <= 0}
             className={clsx(
               "relative flex-1 flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl border transition",

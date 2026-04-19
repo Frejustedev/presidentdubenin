@@ -1,12 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "@/lib/gameStore";
 import { ENDINGS } from "@/lib/endings";
 import { Gauges } from "@/components/Gauges";
 import { FlagBar } from "@/components/FlagBar";
-import { EVENTS } from "@/data/events";
+import { Journal } from "@/components/Journal";
+import { ShareCard } from "@/components/ShareCard";
+import { buildJournal } from "@/lib/journal";
 import {
   loadProfile,
   saveProfile,
@@ -16,6 +18,8 @@ import {
 } from "@/lib/storage";
 import { checkUnlockedTitles } from "@/lib/titles";
 import type { GameResult } from "@/lib/types";
+import { nativeShare, shareText } from "@/lib/share";
+import { sfxEndingBad, sfxEndingGood, sfxTitleUnlock, vibrate } from "@/lib/audio";
 
 export function EndScreen() {
   const gauges = useGame((s) => s.gauges);
@@ -27,19 +31,19 @@ export function EndScreen() {
   const score = useGame((s) => s.score);
   const playerName = useGame((s) => s.playerName);
   const startedAt = useGame((s) => s.startedAt);
+  const activeTraits = useGame((s) => s.activeTraits);
+  const isDaily = useGame((s) => s.isDaily);
+  const dailySeed = useGame((s) => s.dailySeed);
   const resetGame = useGame((s) => s.resetGame);
   const setScreen = useGame((s) => s.setScreen);
   const startGame = useGame((s) => s.startGame);
 
   const [newTitles, setNewTitles] = useState<string[]>([]);
+  const [savedResult, setSavedResult] = useState<GameResult | null>(null);
   const endingDef = ending ? ENDINGS[ending] : ENDINGS.PAISIBLE;
+  const shareRef = useRef<HTMLDivElement>(null);
 
-  const keyMoments = useMemo(() => {
-    return [...history]
-      .sort((a, b) => b.impact - a.impact)
-      .slice(0, 5)
-      .sort((a, b) => a.year - b.year);
-  }, [history]);
+  const journal = useMemo(() => buildJournal(history), [history]);
 
   useEffect(() => {
     if (!ending) return;
@@ -54,10 +58,14 @@ export function EndScreen() {
         : 0,
       finalGauges: gauges,
       playedAt: Date.now(),
-      keyMoments,
+      keyMoments: [...history].sort((a, b) => b.impact - a.impact).slice(0, 5),
       tags,
+      isDailyChallenge: isDaily,
+      dailySeed: dailySeed ?? undefined,
+      activeTraits,
     };
     saveResult(result);
+    setSavedResult(result);
     const all = loadResults();
     const existing = loadProfile();
     const bestScore = Math.max(score, existing?.bestScore ?? 0);
@@ -75,27 +83,72 @@ export function EndScreen() {
       if (list[list.length - 1] === t.id) fresh.push(t.name);
     });
     setNewTitles(fresh);
+
+    const good = ["LÉGENDE", "TRANSITION", "PAISIBLE"].includes(ending);
+    if (good) {
+      sfxEndingGood();
+      vibrate([80, 40, 120]);
+    } else {
+      sfxEndingBad();
+      vibrate(500);
+    }
+    if (fresh.length > 0) setTimeout(sfxTitleUnlock, 900);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const share = async () => {
-    const text = `Président(e) ${playerName || "Anonyme"} du Bénin 🇧🇯
-Fin : ${endingDef.type} ${endingDef.emoji}
-Score : ${score}/100 • Année ${year}/7 • ${decisionsCount} décisions
-Et toi, tu ferais mieux ? #LeSeptennat`;
+    if (!savedResult) return;
     try {
-      if (navigator.share) {
-        await navigator.share({ text, title: "LE SEPTENNAT" });
-      } else {
-        await navigator.clipboard.writeText(text);
-        alert("Résumé copié dans le presse-papier !");
+      const mod = await import("html-to-image");
+      if (shareRef.current) {
+        const blob = await mod.toBlob(shareRef.current, {
+          pixelRatio: 2,
+          backgroundColor: "#05080d",
+        });
+        if (blob) {
+          await nativeShare(savedResult, blob);
+          return;
+        }
       }
+    } catch {}
+    await nativeShare(savedResult);
+  };
+
+  const downloadImage = async () => {
+    if (!savedResult) return;
+    try {
+      const mod = await import("html-to-image");
+      if (shareRef.current) {
+        const dataUrl = await mod.toPng(shareRef.current, {
+          pixelRatio: 2,
+          backgroundColor: "#05080d",
+        });
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `le-septennat-${savedResult.playerName}.png`;
+        a.click();
+      }
+    } catch {}
+  };
+
+  const copyText = async () => {
+    if (!savedResult) return;
+    try {
+      await navigator.clipboard.writeText(shareText(savedResult));
     } catch {}
   };
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
       <FlagBar />
+
+      {/* Share card off-screen for rendering */}
+      <div
+        className="absolute -left-[9999px] top-0 pointer-events-none"
+        aria-hidden
+      >
+        {savedResult && <ShareCard ref={shareRef} result={savedResult} />}
+      </div>
 
       <div className="flex-1 px-5 py-6 max-w-md w-full mx-auto">
         <motion.div
@@ -157,6 +210,7 @@ Et toi, tu ferais mieux ? #LeSeptennat`;
           </div>
           <div className="text-xs text-ink-dim mt-1">
             Année {year} · {decisionsCount} décisions
+            {isDaily && " · Défi du jour"}
           </div>
         </motion.div>
 
@@ -180,7 +234,7 @@ Et toi, tu ferais mieux ? #LeSeptennat`;
           </motion.div>
         )}
 
-        {keyMoments.length > 0 && (
+        {journal.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -188,36 +242,13 @@ Et toi, tu ferais mieux ? #LeSeptennat`;
             className="mt-6"
           >
             <div className="text-[10px] tracking-widest text-ink-faint uppercase mb-3 text-center">
-              Journal de votre mandat
+              Revue de presse
             </div>
-            <div className="space-y-3">
-              {keyMoments.map((m, idx) => {
-                const ev = EVENTS.find((e) => e.id === m.eventId);
-                if (!ev) return null;
-                const label = m.choice === "a" ? ev.a.label : ev.b.label;
-                return (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl bg-[#1a1410] border border-[#3d2d1f] text-[#e8d7a7]"
-                    style={{ fontFamily: "Georgia, serif" }}
-                  >
-                    <div className="text-[9px] uppercase tracking-widest text-[#b8925a] mb-1">
-                      Année {m.year} · La Gazette du Golfe
-                    </div>
-                    <div className="text-sm font-bold leading-tight">
-                      {ev.title}
-                    </div>
-                    <div className="text-xs mt-1 italic opacity-80">
-                      Décision : {label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <Journal entries={journal} />
           </motion.div>
         )}
 
-        <div className="mt-8 grid gap-3">
+        <div className="mt-8 grid gap-2">
           <button
             onClick={() => {
               resetGame();
@@ -227,15 +258,25 @@ Et toi, tu ferais mieux ? #LeSeptennat`;
           >
             REJOUER
           </button>
-          <button
-            onClick={() => setScreen("leaderboard")}
-            className="btn-secondary"
-          >
-            🏆 Classement
-          </button>
-          <button onClick={share} className="btn-secondary">
-            📤 Partager
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={share} className="btn-secondary">
+              📤 Partager
+            </button>
+            <button onClick={downloadImage} className="btn-secondary">
+              🖼️ Image
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={copyText} className="btn-secondary">
+              📋 Copier
+            </button>
+            <button
+              onClick={() => setScreen("leaderboard")}
+              className="btn-secondary"
+            >
+              🏆 Classement
+            </button>
+          </div>
           <button onClick={resetGame} className="btn-ghost">
             Menu principal
           </button>

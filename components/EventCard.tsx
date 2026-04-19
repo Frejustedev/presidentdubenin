@@ -9,6 +9,13 @@ import {
 import { useState, useMemo } from "react";
 import type { GameEvent, TraitId } from "@/lib/types";
 import { useGame } from "@/lib/gameStore";
+import {
+  sfxCardAppear,
+  sfxSwipeLeft,
+  sfxSwipeRight,
+  vibrate,
+} from "@/lib/audio";
+import { useEffect } from "react";
 
 interface Props {
   event: GameEvent;
@@ -34,6 +41,23 @@ export function EventCard({ event, onChoice }: Props) {
   const tags = useGame((s) => s.tags);
   const revealNext = useGame((s) => s.revealNext);
 
+  useEffect(() => {
+    sfxCardAppear();
+  }, [event.id]);
+
+  const makeChoice = (k: "a" | "b" | "c") => {
+    if (exiting) return;
+    setExiting(true);
+    if (k === "a") sfxSwipeLeft();
+    else if (k === "b") sfxSwipeRight();
+    else {
+      sfxSwipeRight();
+      sfxSwipeLeft();
+    }
+    vibrate(50);
+    onChoice(k);
+  };
+
   const hiddenUnlocked = useMemo(() => {
     if (!event.c) return false;
     const c = event.c;
@@ -55,13 +79,8 @@ export function EventCard({ event, onChoice }: Props) {
     if (exiting) return;
     const off = info.offset.x;
     const vel = info.velocity.x;
-    if (off < -120 || vel < -500) {
-      setExiting(true);
-      onChoice("a");
-    } else if (off > 120 || vel > 500) {
-      setExiting(true);
-      onChoice("b");
-    }
+    if (off < -120 || vel < -500) makeChoice("a");
+    else if (off > 120 || vel > 500) makeChoice("b");
   };
 
   const catColor = CAT_COLOR[event.cat];
@@ -160,12 +179,7 @@ export function EventCard({ event, onChoice }: Props) {
 
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button
-          onClick={() => {
-            if (!exiting) {
-              setExiting(true);
-              onChoice("a");
-            }
-          }}
+          onClick={() => makeChoice("a")}
           className="text-left bg-bg-elevated border border-white/10 rounded-2xl p-3
                      hover:border-gold/40 transition active:scale-[0.98]"
         >
@@ -178,12 +192,7 @@ export function EventCard({ event, onChoice }: Props) {
           {fxBadge(event.a.fx)}
         </button>
         <button
-          onClick={() => {
-            if (!exiting) {
-              setExiting(true);
-              onChoice("b");
-            }
-          }}
+          onClick={() => makeChoice("b")}
           className="text-right bg-bg-elevated border border-white/10 rounded-2xl p-3
                      hover:border-gold/40 transition active:scale-[0.98]"
         >
@@ -201,12 +210,7 @@ export function EventCard({ event, onChoice }: Props) {
         <motion.button
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          onClick={() => {
-            if (!exiting) {
-              setExiting(true);
-              onChoice("c");
-            }
-          }}
+          onClick={() => makeChoice("c")}
           className="mt-2 w-full text-center rounded-2xl p-3 border-2 transition active:scale-[0.98]"
           style={{
             borderColor: "#F39C12",

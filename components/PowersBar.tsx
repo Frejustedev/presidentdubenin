@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/gameStore";
 import { POWERS } from "@/lib/powers";
+import { sfxPower, vibrate } from "@/lib/audio";
 
 export function PowersBar() {
   const powersUsed = useGame((s) => s.powersUsed);
@@ -21,7 +22,12 @@ export function PowersBar() {
           <motion.button
             key={p.id}
             whileTap={{ scale: 0.92 }}
-            onClick={() => !disabled && use(p.id)}
+            onClick={() => {
+              if (disabled) return;
+              sfxPower();
+              vibrate([30, 20, 40]);
+              use(p.id);
+            }}
             disabled={disabled}
             className={clsx(
               "flex-1 flex flex-col items-center py-1.5 px-1 rounded-xl border transition",
