@@ -20,6 +20,7 @@ import { checkUnlockedTitles } from "@/lib/titles";
 import type { GameResult } from "@/lib/types";
 import { nativeShare, shareText } from "@/lib/share";
 import { sfxEndingBad, sfxEndingGood, sfxTitleUnlock, vibrate } from "@/lib/audio";
+import { submitScoreRemote } from "@/lib/supabase";
 
 export function EndScreen() {
   const gauges = useGame((s) => s.gauges);
@@ -66,6 +67,8 @@ export function EndScreen() {
     };
     saveResult(result);
     setSavedResult(result);
+    // Envoi best-effort vers Supabase (fallback local garanti)
+    submitScoreRemote(result).catch(() => {});
     const all = loadResults();
     const existing = loadProfile();
     const bestScore = Math.max(score, existing?.bestScore ?? 0);
