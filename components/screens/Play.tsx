@@ -18,14 +18,25 @@ export function PlayScreen() {
   const playerName = useGame((s) => s.playerName);
   const currentEvent = getCurrentEvent();
 
-  const DECISIONS_PER_YEAR_SEQ = [3, 3, 3, 3, 2, 2, 2];
-  const before = DECISIONS_PER_YEAR_SEQ.slice(0, year - 1).reduce(
-    (a, b) => a + b,
-    0
-  );
-  const perYear = DECISIONS_PER_YEAR_SEQ[year - 1] ?? 3;
-  const decInYear = Math.max(0, decisionsCount - before);
-  const yearProgress = (decInYear / perYear) * 100;
+  const DECISIONS_PER_YEAR = 12;
+  const decInYear = decisionsCount - (year - 1) * DECISIONS_PER_YEAR;
+  const month = Math.min(12, Math.max(1, decInYear + 1));
+  const yearProgress = Math.min(100, (decInYear / DECISIONS_PER_YEAR) * 100);
+  const MOIS_LABELS = [
+    "Jan",
+    "Fév",
+    "Mar",
+    "Avr",
+    "Mai",
+    "Juin",
+    "Juil",
+    "Août",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Déc",
+  ];
+  const moisLabel = MOIS_LABELS[Math.min(11, decInYear)] ?? "Jan";
 
   return (
     <div className="min-h-[100dvh] flex flex-col">
@@ -43,10 +54,10 @@ export function PlayScreen() {
           </div>
           <div className="text-right">
             <span className="text-[10px] tracking-widest text-ink-faint uppercase">
-              Année
+              {moisLabel} {2025 + year}
             </span>
             <div className="font-mono text-gold text-xl leading-tight">
-              {year} / 7
+              An {year}/7
             </div>
           </div>
         </div>
@@ -95,9 +106,9 @@ export function PlayScreen() {
 
       <div className="px-5 pb-3 pt-1 flex items-center justify-between text-[10px] text-ink-faint">
         <span className="tracking-widest uppercase">
-          Décision {decisionsCount + 1}
+          Mois {month}/12 · Décision {decisionsCount + 1}/84
         </span>
-        <span className="font-mono">🇧🇯 {2025 + year}</span>
+        <span className="font-mono">🇧🇯 {moisLabel} {2025 + year}</span>
       </div>
 
       <AdvisorPanel />

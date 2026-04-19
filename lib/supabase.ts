@@ -57,7 +57,7 @@ export async function submitScoreRemote(
       score: Math.max(0, Math.min(150, result.score)),
       ending_type: result.ending,
       year_reached: result.yearReached,
-      decisions_count: result.decisionsCount,
+      decisions_count: Math.min(90, result.decisionsCount),
       duration_seconds: result.durationSeconds ?? 0,
       final_peuple: result.finalGauges.peuple,
       final_tresor: result.finalGauges.tresor,

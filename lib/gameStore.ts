@@ -45,8 +45,12 @@ const DIFFICULTY_NEGATIVE_MULT: Record<Difficulty, number> = {
   historique: 1.15,
 };
 
-// v2.0 : 18 decisions totales repartis 3-3-3-3-2-2-2 sur 7 annees
-const DECISIONS_PER_YEAR_SEQ = [3, 3, 3, 3, 2, 2, 2] as const;
+// Echelle globale des effets pour le format 84 decisions (au lieu de 18)
+// Rend chaque decision "moins catastrophique" pour etaler la tension sur 7 ans
+const LONG_GAME_EFFECT_SCALE = 0.6;
+
+// v3.0 : 12 decisions par annee (1 par mois) × 7 ans = 84 decisions
+const DECISIONS_PER_YEAR_SEQ = [12, 12, 12, 12, 12, 12, 12] as const;
 const TOTAL_DECISIONS = DECISIONS_PER_YEAR_SEQ.reduce((a, b) => a + b, 0);
 
 function yearFromDecisions(n: number): number {
@@ -458,23 +462,31 @@ export const useGame = create<GameState>()(
     const baseFx = applyTraitsToEffect(c.fx, state.activeTraits);
     // Sur difficulte elevee, les effets negatifs sont amplifies (ou reduits en facile)
     const negMult = DIFFICULTY_NEGATIVE_MULT[state.difficulty];
+    const scale = LONG_GAME_EFFECT_SCALE;
+    const applyScale = (v: number) => {
+      if (v === 0) return 0;
+      const scaled = v * scale;
+      // Garantir au moins ±1 pour conserver un effet sensible
+      if (v > 0) return Math.max(1, Math.round(scaled));
+      return Math.min(-1, Math.round(scaled));
+    };
     const fx = {
       peuple:
         (baseFx.peuple ?? 0) < 0
-          ? Math.round((baseFx.peuple ?? 0) * negMult)
-          : baseFx.peuple,
+          ? Math.round(applyScale(baseFx.peuple ?? 0) * negMult)
+          : applyScale(baseFx.peuple ?? 0),
       tresor:
         (baseFx.tresor ?? 0) < 0
-          ? Math.round((baseFx.tresor ?? 0) * negMult)
-          : baseFx.tresor,
+          ? Math.round(applyScale(baseFx.tresor ?? 0) * negMult)
+          : applyScale(baseFx.tresor ?? 0),
       armee:
         (baseFx.armee ?? 0) < 0
-          ? Math.round((baseFx.armee ?? 0) * negMult)
-          : baseFx.armee,
+          ? Math.round(applyScale(baseFx.armee ?? 0) * negMult)
+          : applyScale(baseFx.armee ?? 0),
       pouvoir:
         (baseFx.pouvoir ?? 0) < 0
-          ? Math.round((baseFx.pouvoir ?? 0) * negMult)
-          : baseFx.pouvoir,
+          ? Math.round(applyScale(baseFx.pouvoir ?? 0) * negMult)
+          : applyScale(baseFx.pouvoir ?? 0),
     };
 
     const before = { ...state.gauges };
