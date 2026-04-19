@@ -97,11 +97,11 @@ export function determineEnding(
 
     if (tags.includes("legende")) return "LÉGENDE";
     if (tags.includes("transition_propre")) return "TRANSITION";
-    if (score >= 280 && !tags.includes("autoritaire")) return "LÉGENDE";
+    if (score >= 340 && !tags.includes("autoritaire")) return "LÉGENDE";
     if (autoritaire >= 3 || tags.includes("troisieme_mandat")) {
       return "TYRANNIE";
     }
-    if (score >= 220) return "PAISIBLE";
+    if (score >= 260) return "PAISIBLE";
     return "IMPOPULAIRE";
   }
 

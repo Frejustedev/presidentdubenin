@@ -3,16 +3,41 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useGame } from "@/lib/gameStore";
+import type { Difficulty } from "@/lib/gameStore";
 import { FlagBar } from "@/components/FlagBar";
 import { TRAITS } from "@/lib/traits";
 import { loadProfile } from "@/lib/storage";
 import type { TraitId } from "@/lib/types";
 
+const DIFFICULTY_META: Record<
+  Difficulty,
+  { label: string; emoji: string; desc: string }
+> = {
+  facile: {
+    label: "Facile",
+    emoji: "🌱",
+    desc: "Jauges 60/65, zéro usure annuelle, effets négatifs atténués (−15%).",
+  },
+  normale: {
+    label: "Normale",
+    emoji: "🏛️",
+    desc: "Jauges 50/55, −1 aléatoire par année, effets standards. Style Reigns.",
+  },
+  historique: {
+    label: "Historique",
+    emoji: "⚔️",
+    desc: "Jauges 45/50, −2 aléatoire par année, effets négatifs amplifiés (+15%).",
+  },
+};
+
 export function TraitsScreen() {
   const setScreen = useGame((s) => s.setScreen);
   const setActiveTraits = useGame((s) => s.setActiveTraits);
+  const setDifficulty = useGame((s) => s.setDifficulty);
   const activeTraits = useGame((s) => s.activeTraits);
+  const difficulty = useGame((s) => s.difficulty);
   const [selected, setSelected] = useState<TraitId[]>(activeTraits);
+  const [selDifficulty, setSelDifficulty] = useState<Difficulty>(difficulty);
   const [xp, setXp] = useState(0);
 
   useEffect(() => {
@@ -32,6 +57,7 @@ export function TraitsScreen() {
 
   const continueToRegister = () => {
     setActiveTraits(selected);
+    setDifficulty(selDifficulty);
     setScreen("register");
   };
 
@@ -52,11 +78,48 @@ export function TraitsScreen() {
           </div>
         </div>
 
-        <div className="text-center mb-6">
-          <h2 className="font-display text-2xl font-bold">Vos atouts</h2>
+        <div className="text-center mb-4">
+          <h2 className="font-display text-2xl font-bold">Votre mandat</h2>
           <p className="text-sm text-ink-dim mt-1">
-            Choisissez jusqu'à 2 traits avant votre serment.
+            Réglez la difficulté et choisissez jusqu'à 2 traits.
           </p>
+        </div>
+
+        <div className="mb-5">
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint mb-2">
+            Difficulté
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {(Object.keys(DIFFICULTY_META) as Difficulty[]).map((d) => {
+              const meta = DIFFICULTY_META[d];
+              const active = selDifficulty === d;
+              return (
+                <button
+                  key={d}
+                  onClick={() => setSelDifficulty(d)}
+                  className={`py-2 rounded-xl border text-center transition ${
+                    active
+                      ? "border-gold/80 bg-gold/10 text-ink"
+                      : "border-white/10 bg-bg-panel/50 text-ink-dim hover:border-gold/40"
+                  }`}
+                >
+                  <div className="text-lg">{meta.emoji}</div>
+                  <div className="text-[11px] font-medium uppercase tracking-wider">
+                    {meta.label}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-[11px] text-ink-dim italic text-center px-2">
+            {DIFFICULTY_META[selDifficulty].desc}
+          </div>
+        </div>
+
+        <div className="mt-4 mb-2">
+          <div className="text-[10px] uppercase tracking-widest text-ink-faint">
+            Traits (max 2)
+          </div>
         </div>
 
         <div className="space-y-2">

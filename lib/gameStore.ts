@@ -12,14 +12,37 @@ import type {
 import { determineEnding, computeScore } from "./endings";
 import { applyTraitsToEffect } from "./traits";
 import type { AdvisorId } from "./advisors";
+import type { GaugeKey } from "./types";
 import { advisorForCategory, ADVISORS } from "./advisors";
 import type { PowerId } from "./powers";
 
+// Equilibrage type Reigns/Lapse : commence dans la zone medium,
+// chaque choix pousse dans le rouge, recuperation par negociation, jamais gratuite.
 const START_GAUGES: Gauges = {
-  peuple: 60,
-  tresor: 60,
-  armee: 60,
-  pouvoir: 60,
+  peuple: 50,
+  tresor: 50,
+  armee: 50,
+  pouvoir: 55,
+};
+
+export type Difficulty = "facile" | "normale" | "historique";
+
+const DIFFICULTY_START_BONUS: Record<Difficulty, number> = {
+  facile: 10, // 60/60/60/65
+  normale: 0, // 50/50/50/55 (Reigns-like)
+  historique: -5, // 45/45/45/50 (hardcore)
+};
+
+const DIFFICULTY_DECAY: Record<Difficulty, number> = {
+  facile: 0,
+  normale: 1, // -1 jauge aleatoire a chaque nouvelle annee
+  historique: 2, // -2 jauge aleatoire a chaque nouvelle annee
+};
+
+const DIFFICULTY_NEGATIVE_MULT: Record<Difficulty, number> = {
+  facile: 0.85,
+  normale: 1,
+  historique: 1.15,
 };
 
 // v2.0 : 18 decisions totales repartis 3-3-3-3-2-2-2 sur 7 annees
@@ -59,6 +82,8 @@ type Screen =
   | "traits"
   | "profile";
 
+const GAUGE_KEYS: GaugeKey[] = ["peuple", "tresor", "armee", "pouvoir"];
+
 type Loyalties = Record<AdvisorId, number>;
 type Cooldowns = Record<AdvisorId, number>;
 
@@ -97,9 +122,13 @@ interface GameState {
   isDaily: boolean;
   dailySeed: string | null;
 
+  // Difficulte
+  difficulty: Difficulty;
+
   setScreen: (s: Screen) => void;
   setPlayerName: (n: string) => void;
   setActiveTraits: (traits: TraitId[]) => void;
+  setDifficulty: (d: Difficulty) => void;
   startGame: (options?: { daily?: boolean; seed?: string | null }) => void;
   resolveChoice: (choice: "a" | "b" | "c") => void;
   pickNextEvent: () => void;
@@ -216,15 +245,25 @@ export const useGame = create<GameState>()(
   activeTraits: [],
   isDaily: false,
   dailySeed: null,
+  difficulty: "normale",
 
   setScreen: (s) => set({ screen: s }),
   setPlayerName: (n) => set({ playerName: n }),
   setActiveTraits: (traits) => set({ activeTraits: traits.slice(0, 2) }),
+  setDifficulty: (d) => set({ difficulty: d }),
 
   startGame: (options) => {
+    const difficulty = get().difficulty;
+    const bonus = DIFFICULTY_START_BONUS[difficulty];
+    const adjusted: Gauges = {
+      peuple: clamp(START_GAUGES.peuple + bonus),
+      tresor: clamp(START_GAUGES.tresor + bonus),
+      armee: clamp(START_GAUGES.armee + bonus),
+      pouvoir: clamp(START_GAUGES.pouvoir + bonus),
+    };
     set({
       screen: "play",
-      gauges: { ...START_GAUGES },
+      gauges: adjusted,
       year: 1,
       decisionsCount: 0,
       currentEventId: null,
@@ -350,22 +389,30 @@ export const useGame = create<GameState>()(
     const state = get();
     if (state.powersUsed.includes(id)) return;
 
+    // Chaque pouvoir a un cout politique (equilibrage genre)
     if (id === "discours") {
+      // +5 toutes jauges MAIS -5 pouvoir (discours coute en capital politique)
       set({
         gauges: {
           peuple: clamp(state.gauges.peuple + 5),
           tresor: clamp(state.gauges.tresor + 5),
           armee: clamp(state.gauges.armee + 5),
-          pouvoir: clamp(state.gauges.pouvoir + 5),
+          pouvoir: clamp(state.gauges.pouvoir - 5),
         },
         powersUsed: [...state.powersUsed, id],
       });
     } else if (id === "referendum") {
+      // Annule la derniere decision MAIS -4 peuple, -2 pouvoir (aveu de faiblesse)
       const last = state.history[state.history.length - 1];
       if (!last) return;
       const prevDecisions = Math.max(0, state.decisionsCount - 1);
       set({
-        gauges: last.gaugesBefore,
+        gauges: {
+          peuple: clamp(last.gaugesBefore.peuple - 4),
+          tresor: last.gaugesBefore.tresor,
+          armee: last.gaugesBefore.armee,
+          pouvoir: clamp(last.gaugesBefore.pouvoir - 2),
+        },
         history: state.history.slice(0, -1),
         seenEventIds: state.seenEventIds.filter((i) => i !== last.eventId),
         decisionsCount: prevDecisions,
@@ -374,13 +421,23 @@ export const useGame = create<GameState>()(
         powersUsed: [...state.powersUsed, id],
       });
     } else if (id === "services") {
+      // Revele les effets du prochain choix MAIS -3 tresor (fonds secrets)
       set({
         revealNext: true,
+        gauges: { ...state.gauges, tresor: clamp(state.gauges.tresor - 3) },
         powersUsed: [...state.powersUsed, id],
       });
     } else if (id === "remaniement") {
+      // Reset cooldowns MAIS -3 pouvoir (instabilite perçue) et loyautes -5
       set({
         cooldowns: { ...zeroCooldowns },
+        loyalties: {
+          peuple: Math.max(0, state.loyalties.peuple - 5),
+          tresor: Math.max(0, state.loyalties.tresor - 5),
+          armee: Math.max(0, state.loyalties.armee - 5),
+          pouvoir: Math.max(0, state.loyalties.pouvoir - 5),
+        },
+        gauges: { ...state.gauges, pouvoir: clamp(state.gauges.pouvoir - 3) },
         powersUsed: [...state.powersUsed, id],
       });
     }
@@ -398,7 +455,27 @@ export const useGame = create<GameState>()(
         ? ev.a
         : ev.b;
 
-    const fx = applyTraitsToEffect(c.fx, state.activeTraits);
+    const baseFx = applyTraitsToEffect(c.fx, state.activeTraits);
+    // Sur difficulte elevee, les effets negatifs sont amplifies (ou reduits en facile)
+    const negMult = DIFFICULTY_NEGATIVE_MULT[state.difficulty];
+    const fx = {
+      peuple:
+        (baseFx.peuple ?? 0) < 0
+          ? Math.round((baseFx.peuple ?? 0) * negMult)
+          : baseFx.peuple,
+      tresor:
+        (baseFx.tresor ?? 0) < 0
+          ? Math.round((baseFx.tresor ?? 0) * negMult)
+          : baseFx.tresor,
+      armee:
+        (baseFx.armee ?? 0) < 0
+          ? Math.round((baseFx.armee ?? 0) * negMult)
+          : baseFx.armee,
+      pouvoir:
+        (baseFx.pouvoir ?? 0) < 0
+          ? Math.round((baseFx.pouvoir ?? 0) * negMult)
+          : baseFx.pouvoir,
+    };
 
     const before = { ...state.gauges };
     const after: Gauges = {
@@ -431,6 +508,17 @@ export const useGame = create<GameState>()(
     const newYear = yearFromDecisions(newDecisions);
     const activeChain = c.nextChain ?? null;
 
+    // Usure annuelle : -N sur une jauge aleatoire a chaque passage d'annee
+    let withDecay = after;
+    if (newYear > state.year) {
+      const decay = DIFFICULTY_DECAY[state.difficulty];
+      if (decay > 0) {
+        const victim: GaugeKey =
+          GAUGE_KEYS[Math.floor(Math.random() * GAUGE_KEYS.length)];
+        withDecay = { ...after, [victim]: clamp(after[victim] - decay) };
+      }
+    }
+
     // Mise à jour loyautés : conseiller dont avis suivi = +4, ignoré = -2
     const newLoyalties = { ...state.loyalties };
     if (state.advisorSaid) {
@@ -449,18 +537,18 @@ export const useGame = create<GameState>()(
 
     // Vérifier fin de partie
     const anyZero =
-      after.peuple <= 0 ||
-      after.tresor <= 0 ||
-      after.armee <= 0 ||
-      after.pouvoir <= 0;
+      withDecay.peuple <= 0 ||
+      withDecay.tresor <= 0 ||
+      withDecay.armee <= 0 ||
+      withDecay.pouvoir <= 0;
 
     const yearOver = newDecisions >= TOTAL_DECISIONS;
 
     if (anyZero || yearOver) {
-      const ending = determineEnding(after, newYear, newTags);
-      const score = computeScore(after, newYear, newDecisions, ending);
+      const ending = determineEnding(withDecay, newYear, newTags);
+      const score = computeScore(withDecay, newYear, newDecisions, ending);
       set({
-        gauges: after,
+        gauges: withDecay,
         year: newYear,
         decisionsCount: newDecisions,
         history: newHistory,
@@ -478,7 +566,7 @@ export const useGame = create<GameState>()(
     }
 
     set({
-      gauges: after,
+      gauges: withDecay,
       year: newYear,
       decisionsCount: newDecisions,
       history: newHistory,
@@ -543,6 +631,7 @@ export const useGame = create<GameState>()(
         activeTraits: s.activeTraits,
         isDaily: s.isDaily,
         dailySeed: s.dailySeed,
+        difficulty: s.difficulty,
       }),
     }
   )
