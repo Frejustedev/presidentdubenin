@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useGame } from "@/lib/gameStore";
 import { FlagBar } from "@/components/FlagBar";
 import { loadProfile, saveProfile } from "@/lib/storage";
+import { isValidPlayerName, sanitizePlayerName } from "@/lib/sanitize";
 
 export function RegisterScreen() {
   const [name, setName] = useState("");
@@ -16,13 +17,20 @@ export function RegisterScreen() {
     if (p?.name) setName(p.name);
   }, []);
 
+  const [error, setError] = useState<string | null>(null);
+
   const submit = () => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setPlayerName(trimmed);
+    const clean = sanitizePlayerName(name);
+    const check = isValidPlayerName(clean);
+    if (!check.ok) {
+      setError(check.reason ?? "Nom invalide.");
+      return;
+    }
+    setError(null);
+    setPlayerName(clean);
     const existing = loadProfile();
     saveProfile({
-      name: trimmed,
+      name: clean,
       totalGames: existing?.totalGames ?? 0,
       bestScore: existing?.bestScore ?? 0,
       createdAt: existing?.createdAt ?? Date.now(),
@@ -58,9 +66,15 @@ export function RegisterScreen() {
             className="w-full bg-bg-panel border border-white/10 focus:border-gold/60 rounded-2xl px-5 py-4 text-center font-display text-2xl text-ink placeholder-ink-faint outline-none transition"
           />
 
+          {error && (
+            <div className="mt-3 text-sm text-benin-red" role="alert">
+              {error}
+            </div>
+          )}
           <button
             onClick={submit}
             disabled={!name.trim()}
+            aria-label="Prêter serment et commencer la partie"
             className="btn-primary w-full mt-6 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:translate-y-0"
           >
             PRÊTER SERMENT

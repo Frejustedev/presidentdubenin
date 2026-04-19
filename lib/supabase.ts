@@ -96,6 +96,45 @@ export async function fetchGlobalLeaderboard(): Promise<RemoteResult[]> {
   }
 }
 
+export async function fetchGlobalRank(score: number): Promise<number | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb.rpc("septennat_global_rank", {
+      p_score: score,
+    });
+    if (error) throw error;
+    return typeof data === "number" ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStats(): Promise<{
+  total_games: number;
+  avg_score: number;
+  max_score: number;
+  daily_games_today: number;
+} | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb
+      .from("septennat_stats")
+      .select("total_games, avg_score, max_score, daily_games_today")
+      .single();
+    if (error) throw error;
+    return data as {
+      total_games: number;
+      avg_score: number;
+      max_score: number;
+      daily_games_today: number;
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchDailyLeaderboard(): Promise<RemoteResult[]> {
   const sb = getSupabase();
   if (!sb) return [];

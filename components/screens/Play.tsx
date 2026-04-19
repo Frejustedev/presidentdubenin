@@ -61,7 +61,7 @@ export function PlayScreen() {
         </div>
 
         <div className="mt-4">
-          <Gauges values={gauges} size={58} />
+          <Gauges values={gauges} size={58} tooltips />
         </div>
       </div>
 

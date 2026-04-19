@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import { EVENTS } from "@/data/events";
 import type {
   GameEvent,
@@ -191,7 +192,9 @@ const zeroCooldowns: Cooldowns = {
   pouvoir: 0,
 };
 
-export const useGame = create<GameState>((set, get) => ({
+export const useGame = create<GameState>()(
+  persist(
+    (set, get) => ({
   screen: "title",
   playerName: "",
   gauges: { ...START_GAUGES },
@@ -322,7 +325,8 @@ export const useGame = create<GameState>((set, get) => ({
         id,
         ev.a.fx,
         ev.b.fx,
-        state.loyalties[id]
+        state.loyalties[id],
+        ev.cat
       );
       set((s) => ({
         advisorSaid: {
@@ -512,7 +516,37 @@ export const useGame = create<GameState>((set, get) => ({
       dailySeed: null,
     });
   },
-}));
+    }),
+    {
+      name: "septennat_game_v2",
+      version: 2,
+      storage: createJSONStorage(() => localStorage),
+      // On ne persiste QUE la partie en cours (pas le profil ni le classement)
+      partialize: (s) => ({
+        screen: s.screen === "end" || s.screen === "play" ? s.screen : "title",
+        playerName: s.playerName,
+        gauges: s.gauges,
+        year: s.year,
+        decisionsCount: s.decisionsCount,
+        currentEventId: s.currentEventId,
+        history: s.history,
+        tags: s.tags,
+        seenEventIds: s.seenEventIds,
+        activeChain: s.activeChain,
+        startedAt: s.startedAt,
+        ending: s.ending,
+        score: s.score,
+        loyalties: s.loyalties,
+        cooldowns: s.cooldowns,
+        powersUsed: s.powersUsed,
+        revealNext: s.revealNext,
+        activeTraits: s.activeTraits,
+        isDaily: s.isDaily,
+        dailySeed: s.dailySeed,
+      }),
+    }
+  )
+);
 
 function clamp(v: number): number {
   return Math.max(0, Math.min(100, v));

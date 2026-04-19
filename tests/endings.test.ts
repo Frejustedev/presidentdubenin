@@ -1,0 +1,52 @@
+import { describe, expect, it } from "vitest";
+import { determineEnding, computeScore } from "@/lib/endings";
+
+describe("determineEnding", () => {
+  const full = { peuple: 80, tresor: 80, armee: 80, pouvoir: 80 };
+
+  it("revolution when peuple <= 0", () => {
+    expect(determineEnding({ ...full, peuple: 0 }, 4, [])).toBe("RÉVOLUTION");
+  });
+  it("faillite when tresor <= 0", () => {
+    expect(determineEnding({ ...full, tresor: 0 }, 4, [])).toBe("FAILLITE");
+  });
+  it("coup when armee <= 0", () => {
+    expect(determineEnding({ ...full, armee: 0 }, 4, [])).toBe("COUP D'ÉTAT");
+  });
+  it("exil when pouvoir <= 0", () => {
+    expect(determineEnding({ ...full, pouvoir: 0 }, 4, [])).toBe("EXIL");
+  });
+  it("legende at year 7 with full gauges & no autoritaire", () => {
+    expect(determineEnding(full, 7, [])).toBe("LÉGENDE");
+  });
+  it("tyrannie at year 7 with autoritaire tags", () => {
+    expect(
+      determineEnding(full, 7, [
+        "autoritaire",
+        "repression",
+        "fraude",
+      ])
+    ).toBe("TYRANNIE");
+  });
+  it("transition at year 7 if tag transition_propre", () => {
+    expect(determineEnding(full, 7, ["transition_propre"])).toBe("TRANSITION");
+  });
+  it("paisible by default before year 7", () => {
+    expect(determineEnding(full, 3, [])).toBe("PAISIBLE");
+  });
+});
+
+describe("computeScore", () => {
+  it("returns higher score for LÉGENDE than IMPOPULAIRE", () => {
+    const g = { peuple: 60, tresor: 60, armee: 60, pouvoir: 60 };
+    const legend = computeScore(g, 7, 18, "LÉGENDE");
+    const impop = computeScore(g, 7, 18, "IMPOPULAIRE");
+    expect(legend).toBeGreaterThan(impop);
+  });
+  it("caps decisions bonus at 15", () => {
+    const g = { peuple: 0, tresor: 0, armee: 0, pouvoir: 0 };
+    const short = computeScore(g, 1, 5, "PAISIBLE");
+    const long = computeScore(g, 1, 1000, "PAISIBLE");
+    expect(long - short).toBeLessThan(20);
+  });
+});

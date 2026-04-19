@@ -325,11 +325,47 @@ export const TITLES: TitleDef[] = [
   {
     id: "daily_winner",
     name: "Champion du Jour",
-    description: "Remporter un défi du jour",
+    description: "Remporter un défi du jour (score ≥ 70)",
     icon: "📅",
     secret: true,
     category: "secret",
     check: ({ result }) => result.isDailyChallenge === true && result.score >= 70,
+  },
+  {
+    id: "streak_7",
+    name: "Une semaine au Palais",
+    description: "7 jours de défi consécutifs",
+    icon: "🗓️",
+    category: "progression",
+    check: ({ allResults }) => {
+      if (typeof window === "undefined") return false;
+      try {
+        const raw = localStorage.getItem("septennat_streak_v1");
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as { count?: number };
+        return (parsed.count ?? 0) >= 7;
+      } catch {
+        return false;
+      }
+    },
+  },
+  {
+    id: "streak_30",
+    name: "Un mandat complet",
+    description: "30 jours de défi consécutifs",
+    icon: "📆",
+    category: "progression",
+    check: () => {
+      if (typeof window === "undefined") return false;
+      try {
+        const raw = localStorage.getItem("septennat_streak_v1");
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as { count?: number };
+        return (parsed.count ?? 0) >= 30;
+      } catch {
+        return false;
+      }
+    },
   },
 ];
 

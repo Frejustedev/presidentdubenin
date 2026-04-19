@@ -8,6 +8,7 @@ import { ENDINGS } from "@/lib/endings";
 import { TITLES } from "@/lib/titles";
 import { loadProfile, loadResults, loadTitles } from "@/lib/storage";
 import { loadStreak } from "@/lib/daily";
+import { fetchGlobalRank, fetchStats } from "@/lib/supabase";
 import type { GameResult } from "@/lib/types";
 
 export function ProfileScreen() {
@@ -16,12 +17,23 @@ export function ProfileScreen() {
   const [results, setResults] = useState<GameResult[]>([]);
   const [titles, setTitles] = useState<string[]>([]);
   const [streak, setStreak] = useState(0);
+  const [globalRank, setGlobalRank] = useState<number | null>(null);
+  const [totalPlayers, setTotalPlayers] = useState<number | null>(null);
 
   useEffect(() => {
-    setProfile(loadProfile());
-    setResults(loadResults());
+    const prof = loadProfile();
+    const res = loadResults();
+    setProfile(prof);
+    setResults(res);
     setTitles(loadTitles());
     setStreak(loadStreak().count);
+    const best = res.reduce((a, r) => Math.max(a, r.score), 0);
+    if (best > 0) {
+      fetchGlobalRank(best).then(setGlobalRank).catch(() => {});
+    }
+    fetchStats()
+      .then((s) => s && setTotalPlayers(s.total_games))
+      .catch(() => {});
   }, []);
 
   const totalGames = results.length;
@@ -61,6 +73,21 @@ export function ProfileScreen() {
             Depuis {profile ? new Date(profile.createdAt).toLocaleDateString("fr-FR") : "—"}
           </div>
         </div>
+
+        {globalRank !== null && totalPlayers !== null && totalPlayers > 0 && (
+          <div className="panel p-4 text-center mb-4 border-gold/30">
+            <div className="text-[10px] tracking-widest text-ink-faint uppercase">
+              Votre rang mondial
+            </div>
+            <div className="font-mono text-gold text-3xl font-bold mt-1">
+              #{globalRank}
+              <span className="text-ink-faint text-base">
+                {" "}
+                / {totalPlayers}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3 mb-6">
           <StatCard label="Parties" value={totalGames.toString()} />

@@ -1,4 +1,5 @@
 import type { Category, Effect, GaugeKey } from "./types";
+export type { Category };
 
 export type AdvisorId = "peuple" | "tresor" | "armee" | "pouvoir";
 
@@ -76,15 +77,14 @@ export function advisorForCategory(cat: Category): AdvisorId {
  * - son archétype (biais)
  * - les effets des deux choix sur sa jauge prioritaire
  * - la loyauté (possibilité de mentir ou se tromper)
- *
- * Ne donne JAMAIS les chiffres. Donne une impression qualitative,
- * avec le style propre au personnage.
+ * - la catégorie de l'événement (thème : terrorisme, économie, etc.)
  */
 export function advisorAdvice(
   advisorId: AdvisorId,
   choiceA: Effect,
   choiceB: Effect,
-  loyalty: number
+  loyalty: number,
+  category?: Category
 ): { text: string; recommends: "a" | "b" | "hesitant" } {
   const adv = ADVISORS[advisorId];
   const myA = choiceA[adv.gauge] ?? 0;
@@ -168,7 +168,58 @@ export function advisorAdvice(
     },
   };
 
-  const pool = LINES[advisorId][recommends];
-  const text = pool[Math.floor(Math.random() * pool.length)];
+  // Dialogues spécifiques à une catégorie d'événement si pertinent
+  const CATEGORY_LINES: Partial<
+    Record<AdvisorId, Partial<Record<Category, string[]>>>
+  > = {
+    peuple: {
+      SÉCURITÉ: [
+        "Mon fils, la guerre fait toujours des veuves. Pense aux mères.",
+        "Quand les armes parlent, Dantokpa se tait. Mais elle n'oublie jamais.",
+      ],
+      ÉCONOMIE: [
+        "Le ventre d'abord. Le reste vient après, toujours.",
+        "Si les marchés ferment, le peuple se ferme aussi.",
+      ],
+    },
+    tresor: {
+      SÉCURITÉ: [
+        "Chaque balle tirée coûte le salaire d'un fonctionnaire pendant un mois.",
+        "La guerre ruine les nations avant de les sauver, rappelez-vous.",
+      ],
+      PEUPLE: [
+        "La générosité sociale est un luxe qu'il faut financer, pas promettre.",
+      ],
+    },
+    armee: {
+      PEUPLE: [
+        "Chef, les larmes du peuple séchent ; la faiblesse militaire reste.",
+      ],
+      ÉCONOMIE: [
+        "Chef, sans armée solide, aucune économie ne tient debout.",
+      ],
+      POUVOIR: [
+        "Chef, les institutions ne valent rien si personne ne les défend.",
+      ],
+    },
+    pouvoir: {
+      SÉCURITÉ: [
+        "Monsieur le Président, l'état d'urgence a un coût constitutionnel.",
+      ],
+      PEUPLE: [
+        "Monsieur le Président, l'opinion change vite ; la Cour, jamais.",
+      ],
+    },
+  };
+
+  // 40% chance de piocher dans le pool catégorie si disponible
+  let text: string;
+  const catPool = category && CATEGORY_LINES[advisorId]?.[category];
+  if (catPool && catPool.length && Math.random() < 0.4) {
+    text = catPool[Math.floor(Math.random() * catPool.length)];
+  } else {
+    const pool = LINES[advisorId][recommends];
+    text = pool[Math.floor(Math.random() * pool.length)];
+  }
   return { text, recommends };
 }
